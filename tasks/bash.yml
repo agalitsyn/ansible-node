@@ -1,0 +1,6 @@
+---
+
+- name: copy up .bashrc
+  copy:
+    dest: "/home/{{ node_ssh_user }}/.bashrc"
+    src: bashrc.sh

@@ -1,0 +1,46 @@
+---
+
+- name : Run apt-get update
+  apt:
+    update_cache: "yes"
+    cache_valid_time: "{{ node_apt_cache_valid_time }}"
+
+- name : Run system upgrades
+  apt:
+    update_cache: "yes"
+    cache_valid_time: "{{ node_apt_cache_valid_time }}"
+    upgrade: "dist"
+    force: true
+  when: node_run_system_upgrades
+
+- name: Install packages
+  apt:
+    name: "{{ item }}"
+    state: present
+  with_items: "{{ node_apt_packages }}"
+
+- name: Ensure timezone packages are the latest versions
+  apt:
+    name: "{{ item }}"
+    state: latest
+  with_items: "{{ node_apt_timezone_packages }}"
+
+- name: Ensure most vulnerable packages are the latest versions
+  apt:
+    name: "{{ item }}"
+    state: latest
+  with_items: "{{ node_apt_vulnerability_packages }}"
+  tags: packages
+
+- name: Ensure packages are the latest version and from backports
+  apt:
+    name: "{{ item.name }}"
+    default_release: "{{ item.backport }}"
+    state: latest
+  with_items: "{{ node_apt_backports_packages }}"
+
+- name: Install packages usefull for debugging
+  apt:
+    name: "{{ item }}"
+    state: present
+  with_items: "{{ node_apt_debug_packages }}"

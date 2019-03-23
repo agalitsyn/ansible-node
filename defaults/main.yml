@@ -1,0 +1,77 @@
+---
+
+node_run_system_upgrades: false
+node_force_reboot: false
+
+node_apt_cache_valid_time: 3600
+
+node_apt_packages:
+  - sudo
+  - ssh
+  - apt-transport-https
+  - ca-certificates
+  - python3
+  - python3-pip
+  - rsync
+  - mc
+  - vim
+  - git
+  - tree
+  - curl
+  - less
+  - wget
+  - bzip2
+  - tmux
+
+node_apt_vulnerability_packages:
+  - bash
+  - openssl
+  - libssl-dev
+  - libssl-doc
+  - git
+
+node_apt_timezone_packages:
+  - tzdata
+  - ntp
+
+node_apt_debug_packages:
+  - strace
+  - tcpdump
+  - whois
+  - mtr
+  - htop
+  - atop
+  - iotop
+
+node_apt_backports_packages: []
+
+node_default_locale: "en_US.UTF-8"
+
+node_ssh_user: ansible
+node_ssh_groups: "sudo"
+node_ssh_port: 22
+
+node_ufw_setup: false
+node_ufw_allow_ports:
+  - "{{ node_ssh_port }}"
+  - 80
+  - 443
+
+# These defaults assume forcing journald persistence, fsync to disk once
+# a second, rate-limiting to 10,000 logs a second, no forwarding to
+# syslog or wall, using 8GB of disk space maximum, using 10MB journal
+# files, keeping only a days worth of logs per journal file, and
+# retaining journal files no longer than a month.
+node_journald_vars_to_replace:
+  - { var: Storage, val: volatile }
+  - { var: Compress, val: no }
+  - { var: SyncIntervalSec, val: 1s }
+  - { var: RateLimitInterval, val: 1s }
+  - { var: RateLimitBurst, val: 10000 }
+  - { var: SystemMaxUse, val: 8G }
+  - { var: SystemKeepFree, val: 20% }
+  - { var: SystemMaxFileSize, val: 10M }
+  - { var: MaxRetentionSec, val: 1month }
+  - { var: MaxFileSec, val: 1day }
+  - { var: ForwardToSyslog, val: no }
+  - { var: ForwardToWall, val: no }

@@ -1,0 +1,8 @@
+---
+
+- name: Add Default locale
+  lineinfile:
+    dest: /etc/default/locale
+    state: present
+    regexp: "LANG"
+    line: "LANG={{ node_default_locale }}"
