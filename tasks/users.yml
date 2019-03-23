@@ -22,3 +22,36 @@
     content="%{{ node_ssh_groups }} ALL=(ALL) NOPASSWD:ALL\nDefaults env_keep+=SSH_AUTH_SOCK\n"
     dest=/etc/sudoers.d/admin
     owner=root group=root mode=0440
+
+- name: Check root authorized_keys file is exists
+  file:
+    path: "{{ ansible_env.HOME }}/.ssh/authorized_keys"
+    state: file
+
+- name: Create .ssh folder
+  file:
+    path: "/home/{{ node_ssh_user }}/.ssh"
+    state: directory
+    mode: 0755
+    owner: "{{ node_ssh_user }}"
+    group: "{{ node_ssh_user }}"
+
+- name: Create authorized_keys file
+  file:
+    path: "/home/{{ node_ssh_user }}/.ssh/authorized_keys"
+    state: touch
+    owner: "{{ node_ssh_user }}"
+    group: "{{ node_ssh_user }}"
+
+- name: Copy a "sudoers" file on the remote machine for editing
+  copy:
+    remote_src: yes
+    src: "{{ ansible_env.HOME }}/.ssh/authorized_keys"
+    dest: "/home/{{ node_ssh_user }}/.ssh/authorized_keys"
+    owner: "{{ node_ssh_user }}"
+    group: "{{ node_ssh_user }}"
+
+# - name: Drop root authorized_keys file
+#   file:
+#     path: "{{ ansible_env.HOME }}/.ssh/authorized_keys"
+#     state: absent

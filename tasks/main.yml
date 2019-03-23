@@ -1,9 +1,9 @@
 ---
 
 - include_tasks: apt.yml
+- include_tasks: users.yml
 - include_tasks: bash.yml
 - include_tasks: locale.yml
-- include_tasks: users.yml
 - include_tasks: journald.yml
 - include_tasks: security.yml
 
@@ -11,7 +11,7 @@
   shell: "sleep 5 && systemctl reboot"
   async: 1
   poll: 0
-  when: node_hostname_setup or node_run_system_upgrades or node_force_reboot
+  when: node_run_system_upgrades or node_force_reboot
   register: reboot_start
 
 - name: Wait for the reboot
