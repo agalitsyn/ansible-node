@@ -23,12 +23,17 @@ node_apt_packages:
   - bzip2
   - tmux
 
+node_apt_build_packages:
+  - build-essential
+  - make
+
 node_apt_vulnerability_packages:
   - bash
   - openssl
   - libssl-dev
   - libssl-doc
   - git
+  - fail2ban
 
 node_apt_timezone_packages:
   - tzdata
@@ -44,6 +49,7 @@ node_apt_debug_packages:
   - iotop
 
 node_apt_backports_packages: []
+node_apt_needless_packages: []
 
 node_default_locale: "en_US.UTF-8"
 

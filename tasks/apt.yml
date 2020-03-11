@@ -44,3 +44,15 @@
     name: "{{ item }}"
     state: present
   with_items: "{{ node_apt_debug_packages }}"
+
+- name: Install tools for build
+  apt:
+    name: "{{ item }}"
+    state: present
+  with_items: "{{ node_apt_build_packages }}"
+
+- name: Drop needless packages
+  apt:
+    name: "{{ item }}"
+    state: absent
+  with_items: "{{ node_apt_needless_packages }}"
