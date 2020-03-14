@@ -10,22 +10,18 @@ node_apt_packages:
   - ssh
   - apt-transport-https
   - ca-certificates
-  - python3
-  - python3-pip
   - rsync
   - mc
   - vim
-  - git
   - tree
   - curl
   - less
   - wget
   - bzip2
   - tmux
+  - sysstat
 
-node_apt_build_packages:
-  - build-essential
-  - make
+node_apt_build_packages: []
 
 node_apt_vulnerability_packages:
   - bash
