@@ -20,6 +20,7 @@ node_apt_packages:
   - bzip2
   - tmux
   - sysstat
+  - acl
 
 node_apt_build_packages: []
 
