@@ -9,6 +9,7 @@
     shell=/bin/bash
     append=yes
     createhome=yes
+  when: node_ssh_user != ansible_user
 
 - name: Ensure sudoers.d is enabled
   lineinfile: >
@@ -23,9 +24,9 @@
     dest=/etc/sudoers.d/admin
     owner=root group=root mode=0440
 
-- name: Check root authorized_keys file is exists
+- name: Check login user authorized_keys file is exists
   file:
-    path: "{{ ansible_env.HOME }}/.ssh/authorized_keys"
+    path: "/home/{{ ansible_user }}/.ssh/authorized_keys"
     state: file
 
 - name: Create .ssh folder
@@ -35,6 +36,7 @@
     mode: 0755
     owner: "{{ node_ssh_user }}"
     group: "{{ node_ssh_user }}"
+  when: node_ssh_user != ansible_user
 
 - name: Create authorized_keys file
   file:
@@ -42,16 +44,13 @@
     state: touch
     owner: "{{ node_ssh_user }}"
     group: "{{ node_ssh_user }}"
+  when: node_ssh_user != ansible_user
 
-- name: Copy a "sudoers" file on the remote machine for editing
+- name: Copy login user authorized_keys
   copy:
     remote_src: yes
-    src: "{{ ansible_env.HOME }}/.ssh/authorized_keys"
+    src: "/home/{{ ansible_user }}/.ssh/authorized_keys"
     dest: "/home/{{ node_ssh_user }}/.ssh/authorized_keys"
     owner: "{{ node_ssh_user }}"
     group: "{{ node_ssh_user }}"
-
-# - name: Drop root authorized_keys file
-#   file:
-#     path: "{{ ansible_env.HOME }}/.ssh/authorized_keys"
-#     state: absent
+  when: node_ssh_user != ansible_user
