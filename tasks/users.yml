@@ -9,7 +9,6 @@
     shell=/bin/bash
     append=yes
     createhome=yes
-  when: node_ssh_user != ansible_user
 
 - name: Ensure sudoers.d is enabled
   lineinfile: >
