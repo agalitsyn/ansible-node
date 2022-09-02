@@ -25,7 +25,7 @@
 
 - name: Check login user authorized_keys file is exists
   file:
-    path: "/home/{{ ansible_user }}/.ssh/authorized_keys"
+    path: "{{ ansible_env.HOME }}/.ssh/authorized_keys"
     state: file
 
 - name: Create .ssh folder
@@ -48,7 +48,7 @@
 - name: Copy login user authorized_keys
   copy:
     remote_src: yes
-    src: "/home/{{ ansible_user }}/.ssh/authorized_keys"
+    src: "{{ ansible_env.HOME }}/.ssh/authorized_keys"
     dest: "/home/{{ node_ssh_user }}/.ssh/authorized_keys"
     owner: "{{ node_ssh_user }}"
     group: "{{ node_ssh_user }}"
