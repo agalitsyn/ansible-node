@@ -1,5 +1,6 @@
 #@IgnoreInspection BashAddShebang
 export EDITOR=vim
+export VISUAL=vim
 
 export LS_OPTIONS='--color=auto'
 eval "`dircolors`"
@@ -41,3 +42,4 @@ export HISTTIMEFORMAT="${FG_BLUE}${FONT_BOLD}%Y/%m/%d %H:%M:%S${FONT_RESET}  ";
 
 # Make some commands not show up in history
 export HISTIGNORE="ls:ls *:cd:cd -:pwd;exit:date:* --help"
+
