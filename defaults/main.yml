@@ -34,7 +34,6 @@ node_apt_vulnerability_packages:
 
 node_apt_timezone_packages:
   - tzdata
-  - ntp
 
 node_apt_debug_packages:
   - strace
