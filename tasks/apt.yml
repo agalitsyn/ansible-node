@@ -1,9 +1,17 @@
 ---
 
+# No cache_valid_time here. It is compared against the mtime of
+# /var/lib/apt/lists, which cloud-init touches on first boot, while the
+# index data inside the image is from the day the image was built. On a
+# fresh Ubuntu 26.04 droplet that combination makes apt consider a
+# three-month-old index fresh and then fail with a 404 on package versions
+# that have long left the pool.
+#
+# Refreshing the index is not a change to the system, hence changed_when.
 - name: Update apt cache
   ansible.builtin.apt:
     update_cache: true
-    cache_valid_time: "{{ node_apt_cache_valid_time }}"
+  changed_when: false
 
 - name: Run system upgrades
   ansible.builtin.apt:
