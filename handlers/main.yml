@@ -1,7 +1,36 @@
 ---
 
-- name: restart sshd
-  service: name=ssh state=restarted
+- name: Reload systemd
+  ansible.builtin.systemd_service:
+    daemon_reload: true
 
-- name: restart ufw
-  service: name=ufw state=restarted
+# Restarting ssh.socket also restarts the ssh.service it activates. Already
+# established sessions survive, so this is safe to run over our own
+# connection -- but it is the moment the listening port actually changes.
+- name: Restart ssh socket
+  ansible.builtin.systemd_service:
+    name: ssh.socket
+    state: restarted
+    daemon_reload: true
+  when: node_ssh_manage_socket | bool
+
+- name: Restart sshd
+  ansible.builtin.service:
+    name: ssh
+    state: restarted
+
+- name: Restart journald
+  ansible.builtin.systemd_service:
+    name: systemd-journald
+    state: restarted
+    daemon_reload: true
+
+- name: Restart fail2ban
+  ansible.builtin.service:
+    name: fail2ban
+    state: restarted
+
+- name: Restart ufw
+  ansible.builtin.service:
+    name: ufw
+    state: restarted

@@ -1,0 +1,42 @@
+---
+
+- name: Install ufw
+  ansible.builtin.apt:
+    name: ufw
+    state: present
+
+- name: Set ufw default policies
+  community.general.ufw:
+    direction: "{{ item.direction }}"
+    policy: "{{ item.policy }}"
+  loop:
+    - { direction: incoming, policy: "{{ node_ufw_default_incoming }}" }
+    - { direction: outgoing, policy: "{{ node_ufw_default_outgoing }}" }
+
+# The port we are currently connected on is allowed alongside the target
+# port. On the run that moves SSH from 22 to node_ssh_port both are open,
+# so the switchover cannot strand us behind the firewall.
+- name: Allow configured ports
+  community.general.ufw:
+    rule: allow
+    port: "{{ item | string }}"
+    proto: tcp
+  loop: "{{ ([node_ssh_port, ansible_port | default(22)] + node_ufw_allow_ports) | unique }}"
+
+- name: Enable ufw
+  community.general.ufw:
+    state: enabled
+
+# Once the run itself is arriving on the hardened port, the bootstrap port
+# has no reason to stay open. Dropping an allow rule does not affect
+# already established connections, so this is safe to do mid-play.
+- name: Revoke the bootstrap SSH port
+  community.general.ufw:
+    rule: allow
+    port: "22"
+    proto: tcp
+    delete: true
+  when:
+    - node_ssh_port | int != 22
+    - (ansible_port | default(22)) | int == node_ssh_port | int
+    - 22 not in node_ufw_allow_ports

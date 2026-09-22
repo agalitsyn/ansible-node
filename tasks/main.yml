@@ -1,23 +1,113 @@
 ---
 
-- include_tasks: apt.yml
-- include_tasks: users.yml
-- include_tasks: bash.yml
-- include_tasks: locale.yml
-- include_tasks: journald.yml
-- include_tasks: security.yml
+# Tags are pushed into each included file with `apply`. Tags on a dynamic
+# include only select the include statement itself -- without `apply` a run
+# like `--tags fail2ban` would execute the include and then find no
+# matching tasks inside it.
+
+- name: Assert supported platform
+  ansible.builtin.assert:
+    that:
+      - ansible_facts['os_family'] == 'Debian'
+    fail_msg: "agalitsyn.node supports Debian-family distributions only, got {{ ansible_facts['os_family'] }}"
+    quiet: true
+  tags: always
+
+# Before apt: installing Docker on a small node is exactly what runs the
+# box out of memory, and swap has to exist by then.
+- name: Configure swap
+  ansible.builtin.include_tasks:
+    file: swap.yml
+    apply:
+      tags: [swap]
+  when:
+    - node_swap_setup | bool
+    - (ansible_facts['swaptotal_mb'] | int) == 0
+  tags: [swap]
+
+- name: Tune swappiness
+  ansible.posix.sysctl:
+    name: vm.swappiness
+    value: "{{ node_swappiness | string }}"
+    state: present
+    sysctl_file: /etc/sysctl.d/60-ansible-swap.conf
+    reload: true
+  when: node_swap_setup | bool
+  tags: [swap]
+
+- name: Configure apt and packages
+  ansible.builtin.include_tasks:
+    file: apt.yml
+    apply:
+      tags: [apt, packages]
+  tags: [apt, packages]
+
+- name: Configure admin user
+  ansible.builtin.include_tasks:
+    file: users.yml
+    apply:
+      tags: [users]
+  tags: [users]
+
+- name: Configure shell
+  ansible.builtin.include_tasks:
+    file: bash.yml
+    apply:
+      tags: [bash]
+  tags: [bash]
+
+- name: Configure locale
+  ansible.builtin.include_tasks:
+    file: locale.yml
+    apply:
+      tags: [locale]
+  tags: [locale]
+
+- name: Configure journald
+  ansible.builtin.include_tasks:
+    file: journald.yml
+    apply:
+      tags: [journald, logging]
+  when: node_journald_setup | bool
+  tags: [journald, logging]
+
+- name: Configure unattended upgrades
+  ansible.builtin.include_tasks:
+    file: unattended_upgrades.yml
+    apply:
+      tags: [security, unattended-upgrades]
+  when: node_unattended_upgrades_setup | bool
+  tags: [security, unattended-upgrades]
+
+# Firewall before sshd: the new SSH port has to be permitted before it
+# starts listening, or the port change locks the run out of the host.
+- name: Configure firewall
+  ansible.builtin.include_tasks:
+    file: firewall.yml
+    apply:
+      tags: [security, firewall]
+  when: node_ufw_setup | bool
+  tags: [security, firewall]
+
+- name: Configure fail2ban
+  ansible.builtin.include_tasks:
+    file: fail2ban.yml
+    apply:
+      tags: [security, fail2ban]
+  when: node_fail2ban_setup | bool
+  tags: [security, fail2ban]
+
+- name: Harden SSH
+  ansible.builtin.include_tasks:
+    file: ssh.yml
+    apply:
+      tags: [security, ssh]
+  tags: [security, ssh]
 
 - name: Reboot
-  shell: "sleep 5 && systemctl reboot"
-  async: 1
-  poll: 0
-  when: node_run_system_upgrades or node_force_reboot
-  register: reboot_start
-
-- name: Wait for the reboot
-  wait_for_connection:
+  ansible.builtin.reboot:
+    reboot_timeout: 300
     connect_timeout: 20
-    sleep: 5
-    delay: 5
-    timeout: 300
-  when: reboot_start is changed
+    post_reboot_delay: 5
+  when: node_run_system_upgrades | bool or node_force_reboot | bool
+  tags: [reboot]

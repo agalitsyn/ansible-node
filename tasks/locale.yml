@@ -1,8 +1,15 @@
 ---
 
-- name: Add Default locale
-  lineinfile:
-    dest: /etc/default/locale
+- name: Ensure the locale is generated
+  community.general.locale_gen:
+    name: "{{ node_default_locale }}"
     state: present
-    regexp: "LANG"
+
+- name: Set the default locale
+  ansible.builtin.lineinfile:
+    path: /etc/default/locale
+    state: present
+    regexp: "^LANG="
     line: "LANG={{ node_default_locale }}"
+    create: true
+    mode: "0644"

@@ -1,55 +1,66 @@
 ---
 
 - name: Create admin user
-  user: >
-    name="{{ node_ssh_user }}"
-    comment="Administrator account"
-    state=present
-    groups="{{ node_ssh_groups }}"
-    shell=/bin/bash
-    append=yes
-    createhome=yes
+  ansible.builtin.user:
+    name: "{{ node_ssh_user }}"
+    comment: "Administrator account"
+    state: present
+    groups: "{{ node_ssh_groups }}"
+    shell: /bin/bash
+    append: true
+    create_home: true
 
-- name: Ensure sudoers.d is enabled
-  lineinfile: >
-    dest=/etc/sudoers
-    regexp='^#includedir /etc/sudoers.d'
-    line='#includedir /etc/sudoers.d'
-    state=present backup=yes
+- name: Ensure sudoers.d is included
+  ansible.builtin.lineinfile:
+    path: /etc/sudoers
+    regexp: '^#?@?includedir\s+/etc/sudoers.d'
+    line: "@includedir /etc/sudoers.d"
+    state: present
+    validate: "/usr/sbin/visudo -cf %s"
+    backup: true
 
-- name: Set up password-less sudo for admin users
-  copy: >
-    content="%{{ node_ssh_groups }} ALL=(ALL) NOPASSWD:ALL\nDefaults env_keep+=SSH_AUTH_SOCK\n"
-    dest=/etc/sudoers.d/admin
-    owner=root group=root mode=0440
+- name: Set up password-less sudo for admin group
+  ansible.builtin.copy:
+    content: |
+      %{{ node_ssh_groups }} ALL=(ALL) NOPASSWD:ALL
+      Defaults env_keep+=SSH_AUTH_SOCK
+    dest: /etc/sudoers.d/admin
+    owner: root
+    group: root
+    mode: "0440"
+    validate: "/usr/sbin/visudo -cf %s"
 
-- name: Check login user authorized_keys file is exists
-  file:
-    path: "{{ ansible_env.HOME }}/.ssh/authorized_keys"
-    state: file
+# The keys we are currently authenticating with are the ones the new admin
+# user needs, otherwise hardening sshd cuts off every way back in.
+- name: Read authorized_keys of the connecting user
+  ansible.builtin.slurp:
+    src: "{{ ansible_env.HOME }}/.ssh/authorized_keys"
+  register: node_login_authorized_keys
+  when: node_ssh_user != ansible_user
 
-- name: Create .ssh folder
-  file:
+- name: Fail when the connecting user has no authorized keys
+  ansible.builtin.assert:
+    that:
+      - (node_login_authorized_keys.content | b64decode).strip() | length > 0
+    fail_msg: >-
+      {{ ansible_env.HOME }}/.ssh/authorized_keys is empty, so {{ node_ssh_user }}
+      would have no way to log in once root login is disabled.
+    quiet: true
+  when: node_ssh_user != ansible_user
+
+- name: Create .ssh directory for the admin user
+  ansible.builtin.file:
     path: "/home/{{ node_ssh_user }}/.ssh"
     state: directory
-    mode: 0755
+    mode: "0700"
     owner: "{{ node_ssh_user }}"
     group: "{{ node_ssh_user }}"
   when: node_ssh_user != ansible_user
 
-- name: Create authorized_keys file
-  file:
-    path: "/home/{{ node_ssh_user }}/.ssh/authorized_keys"
-    state: touch
-    owner: "{{ node_ssh_user }}"
-    group: "{{ node_ssh_user }}"
-  when: node_ssh_user != ansible_user
-
-- name: Copy login user authorized_keys
-  copy:
-    remote_src: yes
-    src: "{{ ansible_env.HOME }}/.ssh/authorized_keys"
-    dest: "/home/{{ node_ssh_user }}/.ssh/authorized_keys"
-    owner: "{{ node_ssh_user }}"
-    group: "{{ node_ssh_user }}"
+- name: Authorize the connecting user's keys for the admin user
+  ansible.posix.authorized_key:
+    user: "{{ node_ssh_user }}"
+    key: "{{ node_login_authorized_keys.content | b64decode }}"
+    state: present
+    exclusive: false
   when: node_ssh_user != ansible_user

@@ -1,0 +1,11 @@
+# {{ ansible_managed }}
+# Managed by the agalitsyn.node role. Do not edit by hand.
+#
+# Ubuntu 22.10+ activates sshd from ssh.socket, so the `Port` directive in
+# sshd_config never takes effect. The empty ListenStream= resets the list
+# inherited from the shipped unit; without it these would be *added* to
+# port 22 rather than replacing it.
+[Socket]
+ListenStream=
+ListenStream=0.0.0.0:{{ node_ssh_port }}
+ListenStream=[::]:{{ node_ssh_port }}

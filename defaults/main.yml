@@ -5,10 +5,19 @@ node_force_reboot: false
 
 node_apt_cache_valid_time: 3600
 
+# Cloud instances usually ship with no swap at all. Skipped entirely when
+# the host already has swap from any source.
+node_swap_setup: true
+node_swap_file: /swapfile
+# Twice RAM, clamped to 1-4GB.
+node_swap_size_mb: "{{ [[ansible_facts['memtotal_mb'] | int * 2, 1024] | max, 4096] | min }}"
+# Servers should reach for swap late; the default of 60 is tuned for
+# desktops.
+node_swappiness: 10
+
 node_apt_packages:
   - sudo
   - ssh
-  - apt-transport-https
   - ca-certificates
   - rsync
   - mc
@@ -24,13 +33,10 @@ node_apt_packages:
 
 node_apt_build_packages: []
 
+# Kept at the newest available version on every run.
 node_apt_vulnerability_packages:
-  - bash
   - openssl
-  - libssl-dev
-  - libssl-doc
   - git
-  - fail2ban
 
 node_apt_timezone_packages:
   - tzdata
@@ -39,7 +45,7 @@ node_apt_debug_packages:
   - strace
   - tcpdump
   - whois
-  - mtr
+  - mtr-tiny
   - htop
   - atop
   - iotop
@@ -53,27 +59,73 @@ node_ssh_user: ansible
 node_ssh_groups: "sudo"
 node_ssh_port: 22
 
-node_ufw_setup: false
+# Ubuntu 22.10+ ships a socket-activated sshd: systemd owns the listening
+# socket and hands the fd to sshd, so `Port` in sshd_config is ignored.
+# When true the role writes an ssh.socket drop-in so node_ssh_port is
+# actually honoured. Set to false if you disabled socket activation.
+node_ssh_manage_socket: true
+
+# Written into /etc/ssh/sshd_config.d/. sshd takes the FIRST value it sees
+# for an option and reads snippets in lexical order, so this must sort
+# before Ubuntu's shipped 50-cloud-init.conf / 60-cloudimg-settings.conf.
+node_sshd_dropin_name: "10-ansible-hardening.conf"
+
+node_sshd_options:
+  PermitRootLogin: "no"
+  PasswordAuthentication: "no"
+  KbdInteractiveAuthentication: "no"
+  PubkeyAuthentication: "yes"
+  PermitEmptyPasswords: "no"
+  AllowGroups: "{{ node_ssh_groups }}"
+  MaxAuthTries: "5"
+  LoginGraceTime: "60"
+  MaxSessions: "30"
+  MaxStartups: "10:30:60"
+  X11Forwarding: "no"
+  AllowAgentForwarding: "no"
+  ClientAliveInterval: "300"
+  ClientAliveCountMax: "2"
+
+node_ufw_setup: true
+node_ufw_default_incoming: deny
+node_ufw_default_outgoing: allow
+# The SSH port is always allowed on top of this list, as is the port the
+# current Ansible run is connected on, so a port change cannot lock us out.
 node_ufw_allow_ports:
-  - "{{ node_ssh_port }}"
   - 80
   - 443
 
-# These defaults assume forcing journald persistence, fsync to disk once
-# a second, rate-limiting to 10,000 logs a second, no forwarding to
-# syslog or wall, using 8GB of disk space maximum, using 10MB journal
-# files, keeping only a days worth of logs per journal file, and
-# retaining journal files no longer than a month.
-node_journald_vars_to_replace:
-  - { var: Storage, val: volatile }
-  - { var: Compress, val: no }
-  - { var: SyncIntervalSec, val: 1s }
-  - { var: RateLimitInterval, val: 1s }
-  - { var: RateLimitBurst, val: 10000 }
-  - { var: SystemMaxUse, val: 8G }
-  - { var: SystemKeepFree, val: 20% }
-  - { var: SystemMaxFileSize, val: 10M }
-  - { var: MaxRetentionSec, val: 1month }
-  - { var: MaxFileSec, val: 1day }
-  - { var: ForwardToSyslog, val: no }
-  - { var: ForwardToWall, val: no }
+node_fail2ban_setup: true
+node_fail2ban_bantime: 1h
+node_fail2ban_findtime: 10m
+node_fail2ban_maxretry: 5
+node_fail2ban_ignoreip: "127.0.0.1/8 ::1"
+# Escalating ban for hosts that come back after their first ban expires.
+node_fail2ban_recidive: true
+node_fail2ban_recidive_bantime: 1w
+node_fail2ban_recidive_findtime: 1d
+node_fail2ban_recidive_maxretry: 3
+
+node_unattended_upgrades_setup: true
+node_unattended_upgrades_reboot: false
+node_unattended_upgrades_reboot_time: "04:00"
+
+# journald is configured through a drop-in in /etc/systemd/journald.conf.d/
+# instead of rewriting the shipped journald.conf.
+# Defaults: persist logs to disk, fsync once a second, rate-limit to 10k
+# messages a second, cap total journal usage at 512M, rotate journal files
+# at 32M or one day, drop anything older than a month.
+node_journald_setup: true
+node_journald_options:
+  Storage: persistent
+  Compress: "yes"
+  SyncIntervalSec: 1s
+  RateLimitIntervalSec: 1s
+  RateLimitBurst: 10000
+  SystemMaxUse: 512M
+  SystemKeepFree: 20%
+  SystemMaxFileSize: 32M
+  MaxRetentionSec: 1month
+  MaxFileSec: 1day
+  ForwardToSyslog: "no"
+  ForwardToWall: "no"

@@ -1,0 +1,21 @@
+// {{ ansible_managed }}
+// Managed by the agalitsyn.node role. Do not edit by hand.
+//
+// Sorts after Ubuntu's shipped 50unattended-upgrades so these win.
+// Only the security pocket is applied automatically; regular updates are
+// left to a deliberate run with node_run_system_upgrades.
+//
+// apt.conf list options are additive, so redefining Allowed-Origins would
+// merely append to the list 50unattended-upgrades already set -- leaving
+// the non-security archive enabled. #clear resets it first.
+#clear "Unattended-Upgrade::Allowed-Origins";
+Unattended-Upgrade::Allowed-Origins {
+    "${distro_id}:${distro_codename}-security";
+    "${distro_id}ESMApps:${distro_codename}-apps-security";
+    "${distro_id}ESM:${distro_codename}-infra-security";
+};
+
+Unattended-Upgrade::Remove-Unused-Kernel-Packages "true";
+Unattended-Upgrade::Remove-Unused-Dependencies "true";
+Unattended-Upgrade::Automatic-Reboot "{{ node_unattended_upgrades_reboot | ternary('true', 'false') }}";
+Unattended-Upgrade::Automatic-Reboot-Time "{{ node_unattended_upgrades_reboot_time }}";

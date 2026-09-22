@@ -1,0 +1,6 @@
+# {{ ansible_managed }}
+# Managed by the agalitsyn.node role. Do not edit by hand.
+[Journal]
+{% for key, value in node_journald_options | dictsort %}
+{{ key }}={{ value }}
+{% endfor %}
