@@ -1,0 +1,29 @@
+# {{ ansible_managed }}
+# Managed by the agalitsyn.node role. Do not edit by hand.
+#
+# Ubuntu ships /etc/fail2ban/jail.d/defaults-debian.conf, which already sets
+# banaction = nftables and enables the sshd jail with the systemd journal
+# backend. This file only overrides the policy on top of that.
+
+[DEFAULT]
+bantime = {{ node_fail2ban_bantime }}
+findtime = {{ node_fail2ban_findtime }}
+maxretry = {{ node_fail2ban_maxretry }}
+ignoreip = {{ node_fail2ban_ignoreip }}
+
+[sshd]
+enabled = true
+# Must be the real port: the ban rule is written against it, and the
+# default `ssh` resolves to 22 via /etc/services.
+port = {{ node_ssh_port }}
+{% if node_fail2ban_recidive %}
+
+# Re-bans hosts that come back after their first ban expires, for much
+# longer. Reads fail2ban's own log rather than sshd's.
+[recidive]
+enabled = true
+bantime = {{ node_fail2ban_recidive_bantime }}
+findtime = {{ node_fail2ban_recidive_findtime }}
+maxretry = {{ node_fail2ban_recidive_maxretry }}
+banaction = nftables[type=allports]
+{% endif %}

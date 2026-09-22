@@ -1,0 +1,58 @@
+---
+
+- name: Deploy sshd hardening drop-in
+  ansible.builtin.template:
+    src: sshd_hardening.conf.j2
+    dest: "/etc/ssh/sshd_config.d/{{ node_sshd_dropin_name }}"
+    owner: root
+    group: root
+    mode: "0600"
+    validate: "/usr/sbin/sshd -t -f %s"
+  notify:
+    - Restart sshd
+    - Restart ssh socket
+
+# Ubuntu's cloud images ship their own snippets. Ours sorts first so it
+# wins, but leaving contradictory files around makes the effective config
+# hard to reason about, so normalise the ones we know about.
+- name: Find conflicting sshd drop-ins
+  ansible.builtin.find:
+    paths: /etc/ssh/sshd_config.d
+    patterns: "*.conf"
+    excludes: "{{ node_sshd_dropin_name }}"
+  register: node_sshd_other_dropins
+
+- name: Report conflicting sshd drop-ins
+  ansible.builtin.debug:
+    msg: >-
+      Other sshd drop-ins present (ours sorts first and wins):
+      {{ node_sshd_other_dropins.files | map(attribute='path') | map('basename') | list }}
+  when: node_sshd_other_dropins.files | length > 0
+
+- name: Ensure ssh.socket drop-in directory exists
+  ansible.builtin.file:
+    path: /etc/systemd/system/ssh.socket.d
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  when: node_ssh_manage_socket | bool
+
+- name: Configure the ssh.socket listening port
+  ansible.builtin.template:
+    src: ssh_socket_override.conf.j2
+    dest: /etc/systemd/system/ssh.socket.d/override.conf
+    owner: root
+    group: root
+    mode: "0644"
+  when: node_ssh_manage_socket | bool
+  notify: Restart ssh socket
+
+- name: Apply sshd changes now
+  ansible.builtin.meta: flush_handlers
+
+- name: Verify sshd is listening on the configured port
+  ansible.builtin.wait_for:
+    port: "{{ node_ssh_port }}"
+    host: 127.0.0.1
+    timeout: 30

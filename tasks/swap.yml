@@ -1,0 +1,42 @@
+---
+
+# Small cloud instances ship without swap, and a 512MB node cannot get
+# through `apt install docker-ce` before the OOM killer reaps something --
+# usually Ansible's own module process, which surfaces as a confusing
+# "No start of json char found".
+
+- name: Allocate the swap file
+  ansible.builtin.command:
+    cmd: "fallocate -l {{ node_swap_size_mb }}M {{ node_swap_file }}"
+    creates: "{{ node_swap_file }}"
+  register: node_swap_allocated
+
+- name: Restrict the swap file to root
+  ansible.builtin.file:
+    path: "{{ node_swap_file }}"
+    owner: root
+    group: root
+    mode: "0600"
+
+- name: Format the swap file
+  ansible.builtin.command: "mkswap {{ node_swap_file }}"
+  when: node_swap_allocated is changed
+  changed_when: true
+
+- name: Persist the swap file in fstab
+  ansible.posix.mount:
+    path: none
+    src: "{{ node_swap_file }}"
+    fstype: swap
+    opts: sw
+    state: present
+
+- name: Enable the swap file
+  ansible.builtin.command: "swapon {{ node_swap_file }}"
+  when: (ansible_facts['swaptotal_mb'] | int) == 0
+  changed_when: true
+
+- name: Refresh memory facts
+  ansible.builtin.setup:
+    gather_subset:
+      - hardware

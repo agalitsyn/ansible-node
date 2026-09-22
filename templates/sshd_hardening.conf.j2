@@ -1,0 +1,14 @@
+# {{ ansible_managed }}
+# Managed by the agalitsyn.node role. Do not edit by hand.
+#
+# This file sorts before Ubuntu's 50-cloud-init.conf and
+# 60-cloudimg-settings.conf on purpose: sshd keeps the FIRST value it sees
+# for an option, and reads /etc/ssh/sshd_config.d/*.conf in lexical order.
+
+# Inert while sshd is socket-activated (systemd owns the listening socket
+# and passes the fd in), but correct if socket activation is ever disabled.
+Port {{ node_ssh_port }}
+
+{% for key, value in node_sshd_options | dictsort %}
+{{ key }} {{ value }}
+{% endfor %}

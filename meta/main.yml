@@ -1,6 +1,18 @@
 galaxy_info:
-  min_ansible_version: '2.6'
+  role_name: node
+  namespace: agalitsyn
+  author: agalitsyn
+  description: Basic setup and hardening for Ubuntu server nodes
+  license: MIT
+  min_ansible_version: '2.15'
   platforms:
     - name: Ubuntu
       versions:
         - noble
+        - resolute
+  galaxy_tags:
+    - system
+    - security
+    - hardening
+
+dependencies: []

@@ -1,6 +1,9 @@
 ---
 
-- name: copy up .bashrc
-  copy:
-    dest: "/home/{{ node_ssh_user }}/.bashrc"
+- name: Install .bashrc for the admin user
+  ansible.builtin.copy:
     src: bashrc.sh
+    dest: "/home/{{ node_ssh_user }}/.bashrc"
+    owner: "{{ node_ssh_user }}"
+    group: "{{ node_ssh_user }}"
+    mode: "0644"

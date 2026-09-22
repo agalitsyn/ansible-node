@@ -1,4 +1,13 @@
 #@IgnoreInspection BashAddShebang
+
+# Debian's bash sources ~/.bashrc even for non-interactive shells started by
+# sshd, so `ssh host somecommand` would otherwise run dircolors and tput and
+# pollute the command's stderr with "tput: No value for $TERM".
+case $- in
+    *i*) ;;
+      *) return ;;
+esac
+
 export EDITOR=vim
 export VISUAL=vim
 

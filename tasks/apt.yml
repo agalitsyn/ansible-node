@@ -1,58 +1,61 @@
 ---
 
-- name : Run apt-get update
-  apt:
-    update_cache: "yes"
+- name: Update apt cache
+  ansible.builtin.apt:
+    update_cache: true
     cache_valid_time: "{{ node_apt_cache_valid_time }}"
 
-- name : Run system upgrades
-  apt:
-    update_cache: "yes"
+- name: Run system upgrades
+  ansible.builtin.apt:
+    upgrade: dist
+    update_cache: true
     cache_valid_time: "{{ node_apt_cache_valid_time }}"
-    upgrade: "dist"
-    force: true
-  when: node_run_system_upgrades
+    autoremove: true
+  when: node_run_system_upgrades | bool
 
-- name: Install packages
-  apt:
-    name: "{{ item }}"
+# Each of these installs the whole list in a single apt transaction instead
+# of one apt run per package, which is what `with_items` used to do.
+- name: Install base packages
+  ansible.builtin.apt:
+    name: "{{ node_apt_packages }}"
     state: present
-  with_items: "{{ node_apt_packages }}"
+  when: node_apt_packages | length > 0
 
-- name: Ensure timezone packages are the latest versions
-  apt:
-    name: "{{ item }}"
+- name: Ensure timezone packages are the latest version
+  ansible.builtin.apt:
+    name: "{{ node_apt_timezone_packages }}"
     state: latest
-  with_items: "{{ node_apt_timezone_packages }}"
+  when: node_apt_timezone_packages | length > 0
 
-- name: Ensure most vulnerable packages are the latest versions
-  apt:
-    name: "{{ item }}"
+- name: Ensure security-sensitive packages are the latest version
+  ansible.builtin.apt:
+    name: "{{ node_apt_vulnerability_packages }}"
     state: latest
-  with_items: "{{ node_apt_vulnerability_packages }}"
+  when: node_apt_vulnerability_packages | length > 0
   tags: packages
 
-- name: Ensure packages are the latest version and from backports
-  apt:
+- name: Ensure backports packages are the latest version
+  ansible.builtin.apt:
     name: "{{ item.name }}"
     default_release: "{{ item.backport }}"
     state: latest
-  with_items: "{{ node_apt_backports_packages }}"
+  loop: "{{ node_apt_backports_packages }}"
 
-- name: Install packages usefull for debugging
-  apt:
-    name: "{{ item }}"
+- name: Install debugging packages
+  ansible.builtin.apt:
+    name: "{{ node_apt_debug_packages }}"
     state: present
-  with_items: "{{ node_apt_debug_packages }}"
+  when: node_apt_debug_packages | length > 0
 
-- name: Install tools for build
-  apt:
-    name: "{{ item }}"
+- name: Install build packages
+  ansible.builtin.apt:
+    name: "{{ node_apt_build_packages }}"
     state: present
-  with_items: "{{ node_apt_build_packages }}"
+  when: node_apt_build_packages | length > 0
 
-- name: Drop needless packages
-  apt:
-    name: "{{ item }}"
+- name: Remove needless packages
+  ansible.builtin.apt:
+    name: "{{ node_apt_needless_packages }}"
     state: absent
-  with_items: "{{ node_apt_needless_packages }}"
+    autoremove: true
+  when: node_apt_needless_packages | length > 0
